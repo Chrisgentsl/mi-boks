@@ -11,6 +11,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    flowType: 'pkce',
+    mfa: {
+      enabled: true
+    },
+    identifierType: 'phone'
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
-}); 
+});
+
+// Add error handling for auth state changes
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Auth state changed:', event, session);
+});

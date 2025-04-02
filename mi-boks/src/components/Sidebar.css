@@ -1,0 +1,87 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #eef0f5;
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: all 0.3s ease;
+}
+
+.profile-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #eef0f5;
+}
+
+.profile-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #eef0f5;
+}
+
+.business-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 1rem;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  color: #666;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: #f8f9fa;
+  color: #6b48ff;
+}
+
+.nav-item.active {
+  background: #6b48ff;
+  color: white;
+}
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+/* Icon styles */
+.dashboard-icon::before { content: '📊'; }
+.sales-icon::before { content: '💰'; }
+.inventory-icon::before { content: '📦'; }
+.orders-icon::before { content: '📝'; }
+.invoice-icon::before { content: '📄'; }
+.receipts-icon::before { content: '🧾'; }
+.suppliers-icon::before { content: '🤝'; }
+.settings-icon::before { content: '⚙️'; }

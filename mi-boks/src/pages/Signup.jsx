@@ -77,6 +77,7 @@ const Signup = () => {
       // Sign up with email or phone
       let authResponse;
       if (formData.email) {
+        console.log('Attempting signup with email:', formData.email);
         authResponse = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -91,6 +92,7 @@ const Signup = () => {
           }
         });
       } else {
+        console.log('Attempting signup with phone:', formData.phone);
         authResponse = await supabase.auth.signUp({
           phone: formData.phone,
           password: formData.password,
@@ -105,30 +107,22 @@ const Signup = () => {
         });
       }
 
-      if (authResponse.error) throw authResponse.error;
+      console.log('Auth response:', authResponse);
 
-      // Create profile in profiles table
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authResponse.data.user.id,
-          full_name: formData.fullName,
-          business_name: formData.businessName,
-          business_type: formData.businessType,
-          business_address: formData.businessAddress,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          role: formData.businessType,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        throw new Error('Failed to create user profile. Please try again.');
+      if (authResponse.error) {
+        console.error('Signup auth error:', authResponse.error);
+        throw authResponse.error;
       }
 
-      if (profileError) throw profileError;
+      if (!authResponse.data?.user?.id) {
+        console.error('No user ID in auth response');
+        throw new Error('Failed to create account. Please try again.');
+      }
+
+      console.log('Creating profile for user:', authResponse.data.user.id);
+
+      // Profile will be created automatically through database triggers
+      console.log('User created successfully:', authResponse.data.user);
 
       // Redirect based on business type
       if (formData.businessType === 'vendor') {
@@ -140,7 +134,9 @@ const Signup = () => {
       }
     } catch (error) {
       console.error('Signup error:', error);
-      setErrors({ submit: error.message });
+      setErrors({ 
+        submit: error.message || 'An unexpected error occurred. Please try again.'
+      });
     } finally {
       setLoading(false);
     }
