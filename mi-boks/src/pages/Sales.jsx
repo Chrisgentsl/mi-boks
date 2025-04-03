@@ -25,11 +25,17 @@ ChartJS.register(
   Legend
 );
 
+const VAT_RATE = 0.15; // 15% VAT
+
 const Sales = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [salesData, setSalesData] = useState([]);
   const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [showCart, setShowCart] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [installments, setInstallments] = useState(1);
   const [timeRange, setTimeRange] = useState('week');
   const [stats, setStats] = useState({
     totalSales: 0,
@@ -61,9 +67,27 @@ const Sales = () => {
   });
 
   useEffect(() => {
-    fetchSalesData();
     fetchProducts();
+    fetchSalesData();
   }, [timeRange]);
+
+  const fetchProducts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('vendor_id', user.id);
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError('Failed to load products');
+    }
+  };
 
   const fetchSalesData = async () => {
     try {
@@ -78,7 +102,6 @@ const Sales = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setSalesData(data || []);
 
       // Calculate statistics
       const totalSales = data.length;
@@ -146,20 +169,97 @@ const Sales = () => {
     }
   };
 
-  const fetchProducts = async () => {
+  const addToCart = (product) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.id === product.id);
+      if (existingItem) {
+        return prevCart.map(item =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      }
+      return [...prevCart, { ...product, quantity: 1 }];
+    });
+  };
+
+  const updateQuantity = (productId, quantity) => {
+    if (quantity < 1) return;
+    setCart(prevCart =>
+      prevCart.map(item =>
+        item.id === productId
+          ? { ...item, quantity }
+          : item
+      )
+    );
+  };
+
+  const removeFromCart = (productId) => {
+    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  };
+
+  const calculateTotal = () => {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const vat = subtotal * VAT_RATE;
+    const total = subtotal + vat;
+    return { subtotal, vat, total };
+  };
+
+  const handleCheckout = async () => {
+    if (!customerName) {
+      setError('Please enter customer name');
+      return;
+    }
+
     try {
+      setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error('Not authenticated');
+
+      const { subtotal, vat, total } = calculateTotal();
+      const installmentAmount = total / installments;
 
       const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('vendor_id', user.id);
+        .from('sales')
+        .insert([{
+          vendor_id: user.id,
+          customer_name: customerName,
+          amount: total,
+          subtotal,
+          vat,
+          payment_method: paymentMethod,
+          installments: paymentMethod === 'pay_smoll_smoll' ? installments : 1,
+          installment_amount: paymentMethod === 'pay_smoll_smoll' ? installmentAmount : total,
+          items: cart.map(item => ({
+            product_id: item.id,
+            quantity: item.quantity,
+            price: item.price
+          }))
+        }]);
 
       if (error) throw error;
-      setProducts(data || []);
+
+      // Update product quantities
+      for (const item of cart) {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update({ quantity: item.quantity - item.quantity })
+          .eq('id', item.id);
+
+        if (updateError) throw updateError;
+      }
+
+      setCart([]);
+      setCustomerName('');
+      setPaymentMethod('cash');
+      setInstallments(1);
+      setShowCart(false);
+      fetchSalesData();
     } catch (err) {
-      console.error('Error fetching products:', err);
+      console.error('Error processing sale:', err);
+      setError('Failed to process sale');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -178,6 +278,8 @@ const Sales = () => {
       </div>
     );
   }
+
+  const { subtotal, vat, total } = calculateTotal();
 
   return (
     <div className="sales-container">
@@ -246,6 +348,134 @@ const Sales = () => {
           </div>
         </div>
       </div>
+
+      <div className="products-grid">
+        {products.map(product => (
+          <div key={product.id} className="product-card">
+            <img src={product.image_url} alt={product.name} />
+            <h3>{product.name}</h3>
+            <p className="product-price">SLL {product.price.toLocaleString()}</p>
+            <p className="product-stock">Stock: {product.quantity}</p>
+            <button 
+              className="add-to-cart-btn"
+              onClick={() => addToCart(product)}
+              disabled={product.quantity === 0}
+            >
+              Add to Cart
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button 
+        className="cart-button"
+        onClick={() => setShowCart(true)}
+      >
+        <i className="material-icons">shopping_cart</i>
+        Cart ({cart.length})
+      </button>
+
+      {showCart && (
+        <div className="cart-modal">
+          <div className="cart-content">
+            <h2>Shopping Cart</h2>
+            <div className="cart-items">
+              {cart.map(item => (
+                <div key={item.id} className="cart-item">
+                  <img src={item.image_url} alt={item.name} />
+                  <div className="item-details">
+                    <h3>{item.name}</h3>
+                    <p>SLL {item.price.toLocaleString()}</p>
+                  </div>
+                  <div className="quantity-controls">
+                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                    <span>{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                  </div>
+                  <button 
+                    className="remove-btn"
+                    onClick={() => removeFromCart(item.id)}
+                  >
+                    <i className="material-icons">delete</i>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="cart-summary">
+              <div className="summary-row">
+                <span>Subtotal:</span>
+                <span>SLL {subtotal.toLocaleString()}</span>
+              </div>
+              <div className="summary-row">
+                <span>VAT (15%):</span>
+                <span>SLL {vat.toLocaleString()}</span>
+              </div>
+              <div className="summary-row total">
+                <span>Total:</span>
+                <span>SLL {total.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="checkout-form">
+              <div className="form-group">
+                <label>Customer Name</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="Enter customer name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="africell">Africell Money</option>
+                  <option value="orange">Orange Money</option>
+                  <option value="pay_smoll_smoll">Pay Smoll Smoll</option>
+                </select>
+              </div>
+
+              {paymentMethod === 'pay_smoll_smoll' && (
+                <div className="form-group">
+                  <label>Number of Installments</label>
+                  <select
+                    value={installments}
+                    onChange={(e) => setInstallments(Number(e.target.value))}
+                  >
+                    {[2, 3, 4, 5, 6].map(num => (
+                      <option key={num} value={num}>{num} installments</option>
+                    ))}
+                  </select>
+                  <p className="installment-info">
+                    Each installment: SLL {(total / installments).toLocaleString()}
+                  </p>
+                </div>
+              )}
+
+              <button 
+                className="checkout-btn"
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+              >
+                Process Sale
+              </button>
+            </div>
+
+            <button 
+              className="close-cart-btn"
+              onClick={() => setShowCart(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="charts-grid">
         <div className="chart-card">
