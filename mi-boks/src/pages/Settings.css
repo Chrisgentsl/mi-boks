@@ -10,7 +10,7 @@
   padding: 2rem;
   margin-left: 250px;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: flex-start;
   height: 100vh;
   overflow-y: auto;
@@ -30,6 +30,7 @@
   width: 100%;
   max-width: 800px;
   margin-bottom: 2rem;
+  margin-left: 2rem;
 }
 
 h1 {
