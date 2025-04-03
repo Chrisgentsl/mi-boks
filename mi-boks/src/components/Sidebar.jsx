@@ -16,6 +16,10 @@ const Sidebar = ({ profile, onLogout }) => {
     { path: '/vendor-dashboard/settings', icon: 'settings', label: 'Settings' }
   ];
 
+  const isActive = (path) => {
+    return location.pathname === path;
+  };
+
   return (
     <aside className="sidebar">
       <div className="profile-section">
@@ -32,7 +36,7 @@ const Sidebar = ({ profile, onLogout }) => {
           <Link
             key={item.path}
             to={item.path}
-            className={`nav-item ${location.pathname === item.path ? 'active' : ''}`}
+            className={`nav-item ${isActive(item.path) ? 'active' : ''}`}
           >
             <i className="material-icons nav-icon">{item.icon}</i>
             <span className="nav-label">{item.label}</span>

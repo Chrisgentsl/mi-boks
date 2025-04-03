@@ -14,10 +14,15 @@ const Settings = () => {
     business_address: '',
     business_phone: '',
     business_email: '',
+    currency: 'SLL',
+    time_zone: 'UTC',
     notification_preferences: {
       email: true,
       sms: false,
-      push: true
+      push: true,
+      order_updates: true,
+      inventory_alerts: true,
+      payment_reminders: true
     }
   });
 
@@ -42,10 +47,15 @@ const Settings = () => {
           business_address: data.business_address || '',
           business_phone: data.business_phone || '',
           business_email: data.business_email || '',
+          currency: data.currency || 'SLL',
+          time_zone: data.time_zone || 'UTC',
           notification_preferences: data.notification_preferences || {
             email: true,
             sms: false,
-            push: true
+            push: true,
+            order_updates: true,
+            inventory_alerts: true,
+            payment_reminders: true
           }
         });
       } catch (err) {
@@ -77,6 +87,8 @@ const Settings = () => {
           business_address: formData.business_address,
           business_phone: formData.business_phone,
           business_email: formData.business_email,
+          currency: formData.currency,
+          time_zone: formData.time_zone,
           notification_preferences: formData.notification_preferences,
           updated_at: new Date().toISOString()
         })
@@ -84,10 +96,10 @@ const Settings = () => {
 
       if (error) throw error;
 
-      setSuccess('Profile updated successfully');
+      setSuccess('Settings updated successfully');
     } catch (err) {
-      console.error('Error updating profile:', err);
-      setError('Failed to update profile');
+      console.error('Error updating settings:', err);
+      setError('Failed to update settings');
     } finally {
       setLoading(false);
     }
@@ -118,112 +130,149 @@ const Settings = () => {
       <Sidebar profile={profile} />
       <main className="main-content">
         <div className="settings-section">
-          <h2>Business Profile</h2>
+          <h1>Settings</h1>
           {error && <div className="error-message">{error}</div>}
           {success && <div className="success-message">{success}</div>}
           
-          <form onSubmit={handleSubmit} className="profile-form">
-            <div className="form-group">
-              <label htmlFor="business_name">Business Name</label>
-              <input
-                type="text"
-                id="business_name"
-                value={formData.business_name}
-                onChange={(e) => setFormData({ ...formData, business_name: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="business_type">Business Type</label>
-              <select
-                id="business_type"
-                value={formData.business_type}
-                onChange={(e) => setFormData({ ...formData, business_type: e.target.value })}
-                required
-              >
-                <option value="">Select Type</option>
-                <option value="retail">Retail</option>
-                <option value="wholesale">Wholesale</option>
-                <option value="manufacturer">Manufacturer</option>
-                <option value="service">Service</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="business_address">Business Address</label>
-              <textarea
-                id="business_address"
-                value={formData.business_address}
-                onChange={(e) => setFormData({ ...formData, business_address: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="business_phone">Business Phone</label>
-              <input
-                type="tel"
-                id="business_phone"
-                value={formData.business_phone}
-                onChange={(e) => setFormData({ ...formData, business_phone: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="business_email">Business Email</label>
-              <input
-                type="email"
-                id="business_email"
-                value={formData.business_email}
-                onChange={(e) => setFormData({ ...formData, business_email: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Notification Preferences</label>
-              <div className="notification-options">
-                <div 
-                  className="notification-option"
-                  onClick={() => handleNotificationChange('email')}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.notification_preferences.email}
-                    onChange={() => {}}
-                  />
-                  <span>Email Notifications</span>
+          <div className="business-info-section">
+            <h2>Business Information</h2>
+            <div className="business-info-card">
+              <div className="business-logo-display">
+                {profile?.business_logo ? (
+                  <img src={profile.business_logo} alt="Business Logo" />
+                ) : (
+                  <div className="logo-placeholder">
+                    <span className="material-icons">business</span>
+                  </div>
+                )}
+              </div>
+              <div className="business-details">
+                <div className="detail-item">
+                  <span className="detail-label">Business Name:</span>
+                  <span className="detail-value">{profile?.business_name || 'Not set'}</span>
                 </div>
-                <div 
-                  className="notification-option"
-                  onClick={() => handleNotificationChange('sms')}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.notification_preferences.sms}
-                    onChange={() => {}}
-                  />
-                  <span>SMS Notifications</span>
+                <div className="detail-item">
+                  <span className="detail-label">Business Type:</span>
+                  <span className="detail-value">{profile?.business_type || 'Not set'}</span>
                 </div>
-                <div 
-                  className="notification-option"
-                  onClick={() => handleNotificationChange('push')}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.notification_preferences.push}
-                    onChange={() => {}}
-                  />
-                  <span>Push Notifications</span>
+                <div className="detail-item">
+                  <span className="detail-label">Address:</span>
+                  <span className="detail-value">{profile?.business_address || 'Not set'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Phone:</span>
+                  <span className="detail-value">{profile?.business_phone || 'Not set'}</span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Email:</span>
+                  <span className="detail-value">{profile?.business_email || 'Not set'}</span>
                 </div>
               </div>
             </div>
+          </div>
 
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
+          <form onSubmit={handleSubmit} className="settings-form">
+            <section className="form-section">
+              <h2>Preferences</h2>
+              <div className="form-group">
+                <label htmlFor="currency">Currency</label>
+                <select
+                  id="currency"
+                  value={formData.currency}
+                  onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                >
+                  <option value="SLL">SLL</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
+                  <option value="GBP">GBP</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="time_zone">Time Zone</label>
+                <select
+                  id="time_zone"
+                  value={formData.time_zone}
+                  onChange={(e) => setFormData({ ...formData, time_zone: e.target.value })}
+                >
+                  <option value="UTC">UTC</option>
+                  <option value="EST">EST</option>
+                  <option value="PST">PST</option>
+                  <option value="GMT">GMT</option>
+                </select>
+              </div>
+            </section>
+
+            <section className="form-section">
+              <h2>Notifications</h2>
+              <div className="notification-options">
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="email_notifications"
+                    checked={formData.notification_preferences.email}
+                    onChange={() => handleNotificationChange('email')}
+                  />
+                  <label htmlFor="email_notifications">Email Notifications</label>
+                </div>
+
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="sms_notifications"
+                    checked={formData.notification_preferences.sms}
+                    onChange={() => handleNotificationChange('sms')}
+                  />
+                  <label htmlFor="sms_notifications">SMS Notifications</label>
+                </div>
+
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="push_notifications"
+                    checked={formData.notification_preferences.push}
+                    onChange={() => handleNotificationChange('push')}
+                  />
+                  <label htmlFor="push_notifications">Push Notifications</label>
+                </div>
+
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="order_updates"
+                    checked={formData.notification_preferences.order_updates}
+                    onChange={() => handleNotificationChange('order_updates')}
+                  />
+                  <label htmlFor="order_updates">Order Updates</label>
+                </div>
+
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="inventory_alerts"
+                    checked={formData.notification_preferences.inventory_alerts}
+                    onChange={() => handleNotificationChange('inventory_alerts')}
+                  />
+                  <label htmlFor="inventory_alerts">Inventory Alerts</label>
+                </div>
+
+                <div className="notification-option">
+                  <input
+                    type="checkbox"
+                    id="payment_reminders"
+                    checked={formData.notification_preferences.payment_reminders}
+                    onChange={() => handleNotificationChange('payment_reminders')}
+                  />
+                  <label htmlFor="payment_reminders">Payment Reminders</label>
+                </div>
+              </div>
+            </section>
+
+            <div className="form-actions">
+              <button type="submit" className="submit-button" disabled={loading}>
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </form>
         </div>
       </main>

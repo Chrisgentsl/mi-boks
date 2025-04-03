@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Inventory from './pages/Inventory';
 import Sales from './pages/Sales';
+import Settings from './pages/Settings';
 import './App.css';
 
 const App = () => {
@@ -77,7 +78,7 @@ const App = () => {
                 <Route path="/vendor-dashboard/invoice" element={<div>Invoice</div>} />
                 <Route path="/vendor-dashboard/receipts" element={<div>Receipts</div>} />
                 <Route path="/vendor-dashboard/suppliers" element={<div>Suppliers</div>} />
-                <Route path="/vendor-dashboard/settings" element={<div>Settings</div>} />
+                <Route path="/vendor-dashboard/settings" element={<Settings profile={profile} />} />
                 <Route path="*" element={<Navigate to="/vendor-dashboard" replace />} />
               </Routes>
             </main>
