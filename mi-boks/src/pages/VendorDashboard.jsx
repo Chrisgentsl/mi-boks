@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Routes, Route } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import Sidebar from '../components/Sidebar';
 import DashboardStats from '../components/DashboardStats';
+import VendorSettings from '../components/VendorSettings';
 import './Dashboard.css';
 
 const VendorDashboard = () => {
@@ -79,11 +80,18 @@ const VendorDashboard = () => {
         <Sidebar profile={profile} onLogout={handleLogout} />
       </div>
       <main className="main-content">
-        <div className="dashboard-header">
-          <h1>Welcome, {profile.business_name || 'Vendor'}</h1>
-          <p>Manage your business and orders from here</p>
-        </div>
-        <DashboardStats />
+        <Routes>
+          <Route path="/" element={
+            <>
+              <div className="dashboard-header">
+                <h1>Welcome, {profile.business_name || 'Vendor'}</h1>
+                <p>Manage your business and orders from here</p>
+              </div>
+              <DashboardStats />
+            </>
+          } />
+          <Route path="/settings" element={<VendorSettings />} />
+        </Routes>
       </main>
     </div>
   );
