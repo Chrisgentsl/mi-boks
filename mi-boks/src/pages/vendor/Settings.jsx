@@ -15,7 +15,7 @@ const Settings = () => {
     contactName: '',
     email: '',
     phone: '',
-    currency: 'USD',
+    currency: 'SLL',
     timeZone: 'UTC',
     notifications: {
       email: true,
@@ -215,6 +215,7 @@ const Settings = () => {
                   value={formData.currency}
                   onChange={handleChange}
                 >
+                  <option value="SLL">SLL</option>
                   <option value="USD">USD</option>
                   <option value="EUR">EUR</option>
                   <option value="GBP">GBP</option>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import Sidebar from '../components/Sidebar';
+import DashboardStats from '../components/DashboardStats';
 import './Dashboard.css';
 
 const VendorDashboard = () => {
@@ -82,20 +83,7 @@ const VendorDashboard = () => {
           <h1>Welcome, {profile.business_name || 'Vendor'}</h1>
           <p>Manage your business and orders from here</p>
         </div>
-        <div className="dashboard-stats">
-          <div className="stat-card">
-            <h3>Total Orders</h3>
-            <p className="stat-number">0</p>
-          </div>
-          <div className="stat-card">
-            <h3>Active Orders</h3>
-            <p className="stat-number">0</p>
-          </div>
-          <div className="stat-card">
-            <h3>Completed Orders</h3>
-            <p className="stat-number">0</p>
-          </div>
-        </div>
+        <DashboardStats />
       </main>
     </div>
   );

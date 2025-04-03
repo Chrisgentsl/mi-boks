@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import Sidebar from '../../components/Sidebar';
 import '../Dashboard.css';
 
@@ -13,6 +14,21 @@ const Orders = () => {
     totalOrders: 6200,
     pendingOrders: 45,
     completedOrders: 6155,
+    totalRevenue: 248000,
+    monthlyData: [
+      { month: 'Jan', orders: 420, revenue: 16800 },
+      { month: 'Feb', orders: 480, revenue: 19200 },
+      { month: 'Mar', orders: 550, revenue: 22000 },
+      { month: 'Apr', orders: 590, revenue: 23600 },
+      { month: 'May', orders: 620, revenue: 24800 },
+      { month: 'Jun', orders: 670, revenue: 26800 }
+    ],
+    orderStatusData: [
+      { name: 'Pending', value: 45 },
+      { name: 'Processing', value: 30 },
+      { name: 'Shipped', value: 25 },
+      { name: 'Delivered', value: 6100 }
+    ],
     orders: [
       { 
         id: '#4550',
@@ -61,6 +77,8 @@ const Orders = () => {
       }
     ]
   });
+
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -162,6 +180,52 @@ const Orders = () => {
                   <span className="stat-value">{ordersData.completedOrders}</span>
                   <span className="stat-label">Completed Orders</span>
                 </div>
+              </div>
+
+              <div className="stat-card total-revenue">
+                <div className="stat-icon"></div>
+                <div className="stat-info">
+                  <span className="stat-value">${ordersData.totalRevenue.toLocaleString()}</span>
+                  <span className="stat-label">Total Revenue</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="charts-grid">
+              <div className="chart-card">
+                <h3>Monthly Orders & Revenue Trend</h3>
+                <LineChart width={600} height={300} data={ordersData.monthlyData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Line yAxisId="left" type="monotone" dataKey="orders" stroke="#8884d8" />
+                  <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#82ca9d" />
+                </LineChart>
+              </div>
+
+              <div className="chart-card">
+                <h3>Order Status Distribution</h3>
+                <PieChart width={400} height={300}>
+                  <Pie
+                    data={ordersData.orderStatusData}
+                    cx={200}
+                    cy={150}
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {ordersData.orderStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
               </div>
             </div>
           </section>
