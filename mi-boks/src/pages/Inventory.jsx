@@ -23,9 +23,24 @@ ChartJS.register(
   Legend
 );
 
+const getProductAbbreviation = (name) => {
+  if (!name) return '';
+  
+  // Split the name into words
+  const words = name.split(' ');
+  
+  // If it's a single word, take first two letters
+  if (words.length === 1) {
+    return name.substring(0, 2).toUpperCase();
+  }
+  
+  // If multiple words, take first letter of each word
+  return words.map(word => word[0]).join('').toUpperCase();
+};
+
 const Inventory = () => {
-  const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -40,9 +55,11 @@ const Inventory = () => {
     description: ''
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showProductModal, setShowProductModal] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [profile, setProfile] = useState(null);
 
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -77,8 +94,27 @@ const Inventory = () => {
   });
 
   useEffect(() => {
-    fetchCategories();
+    const fetchProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) throw error;
+        setProfile(data);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+      }
+    };
+
+    fetchProfile();
     fetchProducts();
+    fetchCategories();
 
     // Set up realtime subscriptions
     const productsSubscription = supabase
@@ -200,63 +236,106 @@ const Inventory = () => {
 
     try {
       setLoading(true);
-      setError('');
-      
-      // Create a unique file name
+      setError(null);
+
+      // Create a preview URL for the image
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+
+      // Upload the image to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `product-images/${fileName}`;
+      const filePath = `${profile.id}/${fileName}`;
 
-      // Upload the file to Supabase storage
+      // First, try to delete the old image if it exists
+      if (editingProduct?.image_url) {
+        const oldImagePath = editingProduct.image_url.split('/').pop();
+        await supabase.storage
+          .from('product-images')
+          .remove([`${profile.id}/${oldImagePath}`]);
+      }
+
+      // Upload the new image
       const { error: uploadError } = await supabase.storage
         .from('product-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       // Get the public URL
       const { data: { publicUrl } } = supabase.storage
         .from('product-images')
         .getPublicUrl(filePath);
 
-      // Update the newProduct state with the image URL
-      setNewProduct(prev => ({
-        ...prev,
-        image_url: publicUrl
-      }));
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      setError('Failed to upload image. Please try again.');
+      // Clean up the old preview URL
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+
+      return publicUrl;
+    } catch (err) {
+      console.error('Error uploading image:', err);
+      setError('Failed to upload image');
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
+  const handleEditProduct = async (product) => {
+    setEditingProduct(product);
+    setNewProduct({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      quantity: product.quantity,
+      category_id: product.category_id,
+      image_url: product.image_url
+    });
+    setImagePreview(product.image_url);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newProduct.name || !newProduct.price || !newProduct.quantity || !newProduct.category_id) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
     try {
       setLoading(true);
-      setError('');
+      setError(null);
+
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
-        .from('products')
-        .insert([{
-          ...newProduct,
-          vendor_id: user.id,
-          price: parseFloat(newProduct.price),
-          quantity: parseInt(newProduct.quantity)
-        }]);
+      const productData = {
+        name: newProduct.name,
+        description: newProduct.description,
+        price: parseFloat(newProduct.price),
+        quantity: parseInt(newProduct.quantity),
+        category_id: newProduct.category_id,
+        vendor_id: user.id,
+        image_url: newProduct.image_url || null
+      };
 
-      if (error) throw error;
+      if (editingProduct) {
+        // Update existing product
+        const { error: updateError } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', editingProduct.id);
 
+        if (updateError) throw updateError;
+        setEditingProduct(null);
+      } else {
+        // Create new product
+        const { error: insertError } = await supabase
+          .from('products')
+          .insert([productData]);
+
+        if (insertError) throw insertError;
+      }
+
+      // Reset form
       setNewProduct({
         name: '',
         description: '',
@@ -265,10 +344,11 @@ const Inventory = () => {
         category_id: '',
         image_url: ''
       });
-      setShowProductModal(false);
-    } catch (error) {
-      console.error('Error adding product:', error);
-      setError('Failed to add product');
+      setImagePreview(null);
+      await fetchProducts();
+    } catch (err) {
+      console.error('Error saving product:', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -342,7 +422,18 @@ const Inventory = () => {
           </button>
           <button 
             className="add-product-btn"
-            onClick={() => setShowProductModal(true)}
+            onClick={() => {
+              setEditingProduct(null);
+              setNewProduct({
+                name: '',
+                description: '',
+                price: '',
+                quantity: '',
+                category_id: '',
+                image_url: ''
+              });
+              setImagePreview(null);
+            }}
           >
             <span className="material-icons">add</span>
             Add Product
@@ -361,7 +452,7 @@ const Inventory = () => {
         </div>
         <div className="stat-card">
           <h3>Total Value</h3>
-          <p>${stats.totalValue.toFixed(2)}</p>
+          <p>SLL {stats.totalValue.toLocaleString()}</p>
           <div className="trend positive">
             <span className="material-icons">trending_up</span>
             +8% from last month
@@ -445,33 +536,30 @@ const Inventory = () => {
       <div className="products-grid">
         {filteredProducts.map(product => (
           <div key={product.id} className="product-card">
-            <div className="product-image">
-              {product.image_url ? (
-                <img src={product.image_url} alt={product.name} />
-              ) : (
-                <div className="no-image">No Image</div>
-              )}
+            <div className="product-abbreviation">
+              {getProductAbbreviation(product.name)}
             </div>
             <div className="product-info">
               <h3>{product.name}</h3>
-              <p className="product-category">
-                {categories.find(c => c.id === product.category_id)?.name || 'Uncategorized'}
-              </p>
-              <p className="product-price">${product.price.toFixed(2)}</p>
-              <p className="product-quantity">
-                Quantity: {product.quantity}
-                {product.quantity < 10 && (
-                  <span className="low-stock-warning">Low Stock</span>
-                )}
-              </p>
-            </div>
-            <div className="product-actions">
-              <button 
-                className="delete-btn"
-                onClick={() => handleDelete(product.id)}
-              >
-                <span className="material-icons">delete</span>
-              </button>
+              <p className="product-description">{product.description}</p>
+              <div className="product-details">
+                <span className="product-price">SLL {product.price.toLocaleString()}</span>
+                <span className="product-quantity">Qty: {product.quantity}</span>
+              </div>
+              <div className="product-actions">
+                <button 
+                  className="edit-button"
+                  onClick={() => handleEditProduct(product)}
+                >
+                  Edit
+                </button>
+                <button 
+                  className="delete-button"
+                  onClick={() => handleDelete(product.id)}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -527,114 +615,117 @@ const Inventory = () => {
         </div>
       )}
 
-      {showProductModal && (
+      {(editingProduct || newProduct.name) && (
         <div className="modal-overlay">
           <div className="modal">
-            <div className="modal-content">
-              <h2>Add New Product</h2>
-              <form onSubmit={handleSubmit}>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label htmlFor="name">Product Name</label>
-                    <input
-                      type="text"
-                      id="name"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="price">Price</label>
-                    <input
-                      type="number"
-                      id="price"
-                      value={newProduct.price}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                      required
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="quantity">Quantity</label>
-                    <input
-                      type="number"
-                      id="quantity"
-                      value={newProduct.quantity}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, quantity: e.target.value }))}
-                      required
-                      min="0"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="category">Category</label>
-                    <select
-                      id="category"
-                      value={newProduct.category_id}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, category_id: e.target.value }))}
-                      required
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map(category => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group full-width">
-                    <label htmlFor="description">Description</label>
-                    <textarea
-                      id="description"
-                      value={newProduct.description}
-                      onChange={(e) => setNewProduct(prev => ({ ...prev, description: e.target.value }))}
-                      rows="4"
-                    />
-                  </div>
-
-                  <div className="image-upload-container">
-                    <label htmlFor="image">Product Image</label>
-                    <input
-                      type="file"
-                      id="image"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      disabled={loading}
-                    />
-                    {newProduct.image_url && (
-                      <div className="image-preview">
-                        <img src={newProduct.image_url} alt="Preview" />
-                      </div>
-                    )}
-                    {loading && <div className="loading-text">Uploading image...</div>}
-                  </div>
-                </div>
-
-                {error && <div className="error-message">{error}</div>}
-
-                <div className="modal-actions">
-                  <button 
-                    type="button" 
-                    className="cancel-btn"
-                    onClick={() => setShowProductModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="submit-btn"
-                    disabled={loading}
-                  >
-                    {loading ? 'Adding...' : 'Add Product'}
-                  </button>
-                </div>
-              </form>
+            <div className="modal-header">
+              <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+              <button 
+                className="close-button"
+                onClick={() => {
+                  setEditingProduct(null);
+                  setNewProduct({
+                    name: '',
+                    description: '',
+                    price: '',
+                    quantity: '',
+                    category_id: '',
+                    image_url: ''
+                  });
+                  setImagePreview(null);
+                }}
+              >
+                ×
+              </button>
             </div>
+            <form onSubmit={handleSubmit} className="product-form">
+              <div className="form-group">
+                <label htmlFor="name">Product Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  value={newProduct.name}
+                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="description">Description</label>
+                <textarea
+                  id="description"
+                  value={newProduct.description}
+                  onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="price">Price (SLL)</label>
+                <input
+                  type="number"
+                  id="price"
+                  value={newProduct.price}
+                  onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                  required
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="quantity">Quantity</label>
+                <input
+                  type="number"
+                  id="quantity"
+                  value={newProduct.quantity}
+                  onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                  required
+                  min="0"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="category">Category</label>
+                <select
+                  id="category"
+                  value={newProduct.category_id}
+                  onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}
+                  required
+                >
+                  <option value="">Select Category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="image">Product Image</label>
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const imageUrl = await handleImageUpload(e);
+                    if (imageUrl) {
+                      setNewProduct({ ...newProduct, image_url: imageUrl });
+                    }
+                  }}
+                />
+                {imagePreview && (
+                  <div className="image-preview">
+                    <img src={imagePreview} alt="Preview" />
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="submit-button" disabled={loading}>
+                {loading ? 'Saving...' : (editingProduct ? 'Update Product' : 'Add Product')}
+              </button>
+            </form>
           </div>
         </div>
       )}
