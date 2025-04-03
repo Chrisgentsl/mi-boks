@@ -37,6 +37,9 @@ const Sales = () => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [installments, setInstallments] = useState(1);
   const [timeRange, setTimeRange] = useState('week');
+  const [recentSales, setRecentSales] = useState([]);
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [showSaleDetails, setShowSaleDetails] = useState(false);
   const [stats, setStats] = useState({
     totalSales: 0,
     totalRevenue: 0,
@@ -69,6 +72,7 @@ const Sales = () => {
   useEffect(() => {
     fetchProducts();
     fetchSalesData();
+    fetchRecentSales();
   }, [timeRange]);
 
   const fetchProducts = async () => {
@@ -169,6 +173,26 @@ const Sales = () => {
     }
   };
 
+  const fetchRecentSales = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('vendor_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setRecentSales(data || []);
+    } catch (err) {
+      console.error('Error fetching recent sales:', err);
+      setError('Failed to load recent sales');
+    }
+  };
+
   const addToCart = (product) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
@@ -205,6 +229,11 @@ const Sales = () => {
     return { subtotal, vat, total };
   };
 
+  const viewSaleDetails = (sale) => {
+    setSelectedSale(sale);
+    setShowSaleDetails(true);
+  };
+
   const handleCheckout = async () => {
     if (!customerName) {
       setError('Please enter customer name');
@@ -219,7 +248,7 @@ const Sales = () => {
       const { subtotal, vat, total } = calculateTotal();
       const installmentAmount = total / installments;
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('sales')
         .insert([{
           vendor_id: user.id,
@@ -255,6 +284,7 @@ const Sales = () => {
       setInstallments(1);
       setShowCart(false);
       fetchSalesData();
+      fetchRecentSales();
     } catch (err) {
       console.error('Error processing sale:', err);
       setError('Failed to process sale');
@@ -524,6 +554,128 @@ const Sales = () => {
           </div>
         </div>
       </div>
+
+      <div className="recent-sales-section">
+        <h2>Recent Sales Transactions</h2>
+        <div className="recent-sales-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Payment Method</th>
+                <th>Status</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentSales.map(sale => (
+                <tr key={sale.id}>
+                  <td>{new Date(sale.created_at).toLocaleDateString()}</td>
+                  <td>{sale.customer_name}</td>
+                  <td>SLL {sale.amount.toLocaleString()}</td>
+                  <td>
+                    <span className={`payment-method ${sale.payment_method}`}>
+                      {sale.payment_method === 'cash' ? 'Cash' :
+                       sale.payment_method === 'africell' ? 'Africell Money' :
+                       sale.payment_method === 'orange' ? 'Orange Money' :
+                       'Pay Smoll Smoll'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`status ${sale.status || 'completed'}`}>
+                      {sale.status || 'Completed'}
+                    </span>
+                  </td>
+                  <td>
+                    <button 
+                      className="view-details-btn"
+                      onClick={() => viewSaleDetails(sale)}
+                    >
+                      View Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showSaleDetails && selectedSale && (
+        <div className="sale-details-modal">
+          <div className="sale-details-content">
+            <h2>Sale Details</h2>
+            <div className="sale-info">
+              <div className="info-row">
+                <span>Date:</span>
+                <span>{new Date(selectedSale.created_at).toLocaleString()}</span>
+              </div>
+              <div className="info-row">
+                <span>Customer:</span>
+                <span>{selectedSale.customer_name}</span>
+              </div>
+              <div className="info-row">
+                <span>Payment Method:</span>
+                <span className={`payment-method ${selectedSale.payment_method}`}>
+                  {selectedSale.payment_method === 'cash' ? 'Cash' :
+                   selectedSale.payment_method === 'africell' ? 'Africell Money' :
+                   selectedSale.payment_method === 'orange' ? 'Orange Money' :
+                   'Pay Smoll Smoll'}
+                </span>
+              </div>
+              {selectedSale.payment_method === 'pay_smoll_smoll' && (
+                <>
+                  <div className="info-row">
+                    <span>Number of Installments:</span>
+                    <span>{selectedSale.installments}</span>
+                  </div>
+                  <div className="info-row">
+                    <span>Installment Amount:</span>
+                    <span>SLL {selectedSale.installment_amount.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
+              <div className="info-row">
+                <span>Subtotal:</span>
+                <span>SLL {selectedSale.subtotal.toLocaleString()}</span>
+              </div>
+              <div className="info-row">
+                <span>VAT (15%):</span>
+                <span>SLL {selectedSale.vat.toLocaleString()}</span>
+              </div>
+              <div className="info-row total">
+                <span>Total:</span>
+                <span>SLL {selectedSale.amount.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div className="sale-items">
+              <h3>Items Purchased</h3>
+              <div className="items-list">
+                {selectedSale.items.map((item, index) => (
+                  <div key={index} className="sale-item">
+                    <span className="item-name">{item.name}</span>
+                    <span className="item-quantity">x{item.quantity}</span>
+                    <span className="item-price">SLL {item.price.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button 
+              className="close-details-btn"
+              onClick={() => {
+                setShowSaleDetails(false);
+                setSelectedSale(null);
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
