@@ -98,7 +98,7 @@ const DashboardStats = () => {
         </div>
         <div className="stat-content">
           <h3>Total Revenue</h3>
-          <p className="stat-number">${stats.totalRevenue.toFixed(2)}</p>
+          <p className="stat-number">SLL {stats.totalRevenue.toFixed(2)}</p>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ const DashboardStats = () => {
         </div>
         <div className="stat-content">
           <h3>Monthly Revenue</h3>
-          <p className="stat-number">${stats.monthlyRevenue.toFixed(2)}</p>
+          <p className="stat-number">SLL {stats.monthlyRevenue.toFixed(2)}</p>
         </div>
       </div>
     </div>
