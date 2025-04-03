@@ -8,6 +8,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [logoPreview, setLogoPreview] = useState(null);
   const [formData, setFormData] = useState({
     business_name: '',
     business_type: '',
@@ -58,6 +59,9 @@ const Settings = () => {
             payment_reminders: true
           }
         });
+        if (data.business_logo) {
+          setLogoPreview(data.business_logo);
+        }
       } catch (err) {
         console.error('Error fetching profile:', err);
         setError('Failed to load profile');
@@ -68,6 +72,71 @@ const Settings = () => {
 
     fetchProfile();
   }, []);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Create a preview URL for the image
+      const previewUrl = URL.createObjectURL(file);
+      setLogoPreview(previewUrl);
+
+      // Upload the image to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${profile.id}/${fileName}`;
+
+      // First, try to delete the old logo if it exists
+      if (profile.business_logo) {
+        const oldLogoPath = profile.business_logo.split('/').pop();
+        await supabase.storage
+          .from('business-logos')
+          .remove([`${profile.id}/${oldLogoPath}`]);
+      }
+
+      // Upload the new logo
+      const { error: uploadError } = await supabase.storage
+        .from('business-logos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('business-logos')
+        .getPublicUrl(filePath);
+
+      // Update the profile with the new logo URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ business_logo: publicUrl })
+        .eq('id', profile.id);
+
+      if (updateError) throw updateError;
+
+      // Update the profile state
+      setProfile(prev => ({ ...prev, business_logo: publicUrl }));
+
+      // Clean up the old preview URL
+      if (logoPreview && logoPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(logoPreview);
+      }
+
+      setSuccess('Logo updated successfully');
+    } catch (err) {
+      console.error('Error uploading logo:', err);
+      setError('Failed to upload logo');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -138,13 +207,24 @@ const Settings = () => {
             <h2>Business Information</h2>
             <div className="business-info-card">
               <div className="business-logo-display">
-                {profile?.business_logo ? (
-                  <img src={profile.business_logo} alt="Business Logo" />
+                {logoPreview ? (
+                  <img src={logoPreview} alt="Business Logo" />
                 ) : (
                   <div className="logo-placeholder">
                     <span className="material-icons">business</span>
                   </div>
                 )}
+                <div className="upload-overlay">
+                  <span className="material-icons">upload</span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  style={{ display: 'none' }}
+                  id="logo-upload"
+                />
+                <label htmlFor="logo-upload" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, cursor: 'pointer' }} />
               </div>
               <div className="business-details">
                 <div className="detail-item">
