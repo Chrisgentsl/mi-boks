@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import './Sidebar.css';
 
-const Sidebar = ({ profile }) => {
+const Sidebar = ({ profile, onLogout }) => {
   const location = useLocation();
 
   const navItems = [
@@ -39,6 +39,13 @@ const Sidebar = ({ profile }) => {
           </Link>
         ))}
       </nav>
+
+      <div className="sidebar-footer">
+        <button onClick={onLogout} className="nav-item logout-button">
+          <i className="material-icons nav-icon">logout</i>
+          <span className="nav-label">Logout</span>
+        </button>
+      </div>
     </aside>
   );
 };
@@ -47,7 +54,8 @@ Sidebar.propTypes = {
   profile: PropTypes.shape({
     avatar_url: PropTypes.string,
     business_name: PropTypes.string
-  })
+  }),
+  onLogout: PropTypes.func.isRequired
 };
 
 export default Sidebar;

@@ -10,6 +10,17 @@ const VendorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate('/login');
+    } catch (err) {
+      console.error('Error logging out:', err);
+      setError(err.message);
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -63,8 +74,29 @@ const VendorDashboard = () => {
 
   return (
     <div className="dashboard-layout">
-      <Sidebar profile={profile} />
-      <main className="main-content"></main>
+      <div className="sidebar-container">
+        <Sidebar profile={profile} onLogout={handleLogout} />
+      </div>
+      <main className="main-content">
+        <div className="dashboard-header">
+          <h1>Welcome, {profile.business_name || 'Vendor'}</h1>
+          <p>Manage your business and orders from here</p>
+        </div>
+        <div className="dashboard-stats">
+          <div className="stat-card">
+            <h3>Total Orders</h3>
+            <p className="stat-number">0</p>
+          </div>
+          <div className="stat-card">
+            <h3>Active Orders</h3>
+            <p className="stat-number">0</p>
+          </div>
+          <div className="stat-card">
+            <h3>Completed Orders</h3>
+            <p className="stat-number">0</p>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };
