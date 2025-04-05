@@ -1,0 +1,74 @@
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.stat-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon i {
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.total-orders .stat-icon {
+  background: linear-gradient(135deg, #6b48ff 0%, #8067ff 100%);
+}
+
+.active-orders .stat-icon {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8585 100%);
+}
+
+.completed-orders .stat-icon {
+  background: linear-gradient(135deg, #4caf50 0%, #66bb6a 100%);
+}
+
+.total-revenue .stat-icon {
+  background: linear-gradient(135deg, #2196f3 0%, #42a5f5 100%);
+}
+
+.monthly-revenue .stat-icon {
+  background: linear-gradient(135deg, #f9a825 0%, #fbc02d 100%);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-content h3 {
+  color: #666;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0 0 0.5rem 0;
+}
+
+.stat-number {
+  color: #1a1a1a;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}

@@ -10,9 +10,24 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@supabase/supabase-js": "^2.49.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+=======
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "chart.js": "^4.4.8",
+    "framer-motion": "^12.6.3",
+    "prop-types": "^15.8.1",
+    "react": "^19.0.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^6.30.0"
+>>>>>>> 35ab2f592af85877bb3d3cd8235c3e931c4dc06b
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
